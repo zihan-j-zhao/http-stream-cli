@@ -19,7 +19,7 @@ int main()
     std::ifstream f(path);
     nlohmann::json json = nlohmann::json::parse(f);
 
-    if (httpstream::parser::ObjectRule::Check(json["request"]["body"]))
+    if (httpstream::parser::check_object(json["request"]["body"]))
     {
         std::cout << "successful\n";
     }

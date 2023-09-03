@@ -74,117 +74,109 @@ namespace httpstream
             return std::find(pool.begin(), pool.end(), target) != pool.end();
         }
 
-        class SourceRule
+        bool check_source(const nlohmann::json& obj)
         {
-        public:
-            static bool Check(const nlohmann::json& obj)
+            spdlog::debug("Validating the below json source:\n {}", obj.dump(2));
+
+            if (!ex_and_str(obj, "type")) return false;
+
+            std::string type = obj["type"].get<std::string>();
+            if (!present_in(type, SRC_TYPES))
             {
-                spdlog::debug("Validating the below json source:\n {}", obj.dump(2));
+                spdlog::error("Unsupported source type: {} (expected one of {})", type, stringify(SRC_TYPES));
+                return false;
+            }
 
-                if (!ex_and_str(obj, "type")) return false;
+            if (type == "xlsx")
+            {
+                if (!ex_and_str(obj, "path")) return false;
+                if (!ex_and_str(obj, "sheet")) return false;
+                if (!ex_and_str(obj, "column")) return false;
+                if (!ex_and_uint(obj, "begin")) return false;
+                if (!ex_and_uint(obj, "end")) return false;
+                if (!ex_and_str(obj, "vtype")) return false;
 
-                std::string type = obj["type"].get<std::string>();
-                if (!present_in(type, SRC_TYPES))
+                std::string vtype = obj["vtype"].get<std::string>();
+                if (!present_in(vtype, VAL_TYPES))
                 {
-                    spdlog::error("Unsupported source type: {} (expected one of {})", type, stringify(SRC_TYPES));
+                    spdlog::error("Unsupported source vtype: {} (expected one of {})", vtype, stringify(VAL_TYPES));
                     return false;
                 }
-
-                if (type == "xlsx")
-                {
-                    if (!ex_and_str(obj, "path")) return false;
-                    if (!ex_and_str(obj, "sheet")) return false;
-                    if (!ex_and_str(obj, "column")) return false;
-                    if (!ex_and_uint(obj, "begin")) return false;
-                    if (!ex_and_uint(obj, "end")) return false;
-                    if (!ex_and_str(obj, "vtype")) return false;
-
-                    std::string vtype = obj["vtype"].get<std::string>();
-                    if (!present_in(vtype, VAL_TYPES))
-                    {
-                        spdlog::error("Unsupported source vtype: {} (expected one of {})", vtype, stringify(VAL_TYPES));
-                        return false;
-                    }
-                }
-                else if (type == "rand-int")
-                {
-                    if (!ex_and_int(obj, "begin")) return false;
-                    if (!ex_and_int(obj, "end")) return false;
-                }
-                else if (type == "rand-double")
-                {
-                    if (!ex_and_float(obj, "begin")) return false;
-                    if (!ex_and_float(obj, "end")) return false;
-                }
-                else
-                {
-                    if (!ex_and_str(obj, "begin")) return false;
-                    if (!ex_and_str(obj, "end")) return false;
-                    if (!ex_and_str(obj, "dateFormat")) return false;
-
-                    std::string format = obj["dateFormat"].get<std::string>();
-                    long long b_epoch = DateUtils::SecFromDate(obj["begin"].get<std::string>(), format);
-                    long long e_epoch = DateUtils::SecFromDate(obj["end"].get<std::string>(), format);
-                    assert_(b_epoch <= e_epoch, false, "Invalid date range");
-                }
-
-                return true;
             }
-        };
-
-        class ObjectRule
-        {
-        public:
-            static bool Check(const nlohmann::json& obj)
+            else if (type == "rand-int")
             {
-                spdlog::debug("Validating the below json object:\n {}", obj.dump(2));
+                if (!ex_and_int(obj, "begin")) return false;
+                if (!ex_and_int(obj, "end")) return false;
+            }
+            else if (type == "rand-double")
+            {
+                if (!ex_and_float(obj, "begin")) return false;
+                if (!ex_and_float(obj, "end")) return false;
+            }
+            else
+            {
+                if (!ex_and_str(obj, "begin")) return false;
+                if (!ex_and_str(obj, "end")) return false;
+                if (!ex_and_str(obj, "dateFormat")) return false;
 
-                if (!ex_and_str(obj, "+type")) return false;
+                std::string format = obj["dateFormat"].get<std::string>();
+                long long b_epoch = DateUtils::SecFromDate(obj["begin"].get<std::string>(), format);
+                long long e_epoch = DateUtils::SecFromDate(obj["end"].get<std::string>(), format);
+                assert_(b_epoch <= e_epoch, false, "Invalid date range");
+            }
 
-                std::string type = obj["+type"].get<std::string>();
-                if (type == "map" || type == "array-map")
+            return true;
+        }
+
+        bool check_object(const nlohmann::json& obj)
+        {
+            spdlog::debug("Validating the below json object:\n {}", obj.dump(2));
+
+            if (!ex_and_str(obj, "+type")) return false;
+
+            std::string type = obj["+type"].get<std::string>();
+            if (type == "map" || type == "array-map")
+            {
+                if (ex_and_obj(obj, "+source", true))
                 {
-                    if (ex_and_obj(obj, "+source", true))
-                    {
-                        spdlog::warn("Ignoring +source field in case of {}", type);
-                    }
+                    spdlog::warn("Ignoring +source field in case of {}", type);
                 }
-                else if (present_in<std::string>(type, ONE_TYPES) || present_in<std::string>(type, MUL_TYPES))
-                {
-                    if (!ex_and_obj(obj, "+source")) return false;
-                    if (!SourceRule::Check(obj["+source"])) return false;
+            }
+            else if (present_in<std::string>(type, ONE_TYPES) || present_in<std::string>(type, MUL_TYPES))
+            {
+                if (!ex_and_obj(obj, "+source")) return false;
+                if (!check_source(obj["+source"])) return false;
 
-                    if (present_in<std::string>(type, ONE_TYPES))
+                if (present_in<std::string>(type, ONE_TYPES))
+                {
+                    if (ex_and_uint(obj, "+size", true) && obj["+size"].get<int>() != 1)
                     {
-                        if (ex_and_uint(obj, "+size", true) && obj["+size"].get<int>() != 1)
-                        {
-                            spdlog::warn("Ignoring +size field in case of type {} (default to 1)", type);
-                        }
-                    }
-                    else
-                    {
-                        if (!exist(obj, "+size", true))
-                        {
-                            spdlog::warn("No +size field for array type (default to 1)");
-                        }
-                        else if (!ex_and_uint(obj, "+size"))
-                        {
-                            return false;
-                        }
+                        spdlog::warn("Ignoring +size field in case of type {} (default to 1)", type);
                     }
                 }
                 else
                 {
-                    spdlog::error("Unsupported entry type: {} (expected one of {}, {})", type, stringify(ONE_TYPES), stringify(MUL_TYPES));
-                    return false;
-                }
-
-                for (auto& el : obj.items())
-                    if (!present_in<std::string>(el.key(), { "+type", "+size", "+source" })
-                        && el.value().is_object() && !Check(el.value()))
+                    if (!exist(obj, "+size", true))
+                    {
+                        spdlog::warn("No +size field for array type (default to 1)");
+                    }
+                    else if (!ex_and_uint(obj, "+size"))
+                    {
                         return false;
-                return true;
+                    }
+                }
             }
-        };
+            else
+            {
+                spdlog::error("Unsupported entry type: {} (expected one of {}, {})", type, stringify(ONE_TYPES), stringify(MUL_TYPES));
+                return false;
+            }
+
+            for (auto& el : obj.items())
+                if (!present_in<std::string>(el.key(), { "+type", "+size", "+source" })
+                    && el.value().is_object() && !check_object(el.value()))
+                    return false;
+            return true;
+        }
     }
 }
