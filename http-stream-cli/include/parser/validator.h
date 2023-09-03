@@ -120,8 +120,8 @@ namespace httpstream
                 if (!ex_and_str(obj, "dateFormat")) return false;
 
                 std::string format = obj["dateFormat"].get<std::string>();
-                long long b_epoch = DateUtils::SecFromDate(obj["begin"].get<std::string>(), format);
-                long long e_epoch = DateUtils::SecFromDate(obj["end"].get<std::string>(), format);
+                long long b_epoch = utils::DateUtils::SecFromDate(obj["begin"].get<std::string>(), format);
+                long long e_epoch = utils::DateUtils::SecFromDate(obj["end"].get<std::string>(), format);
                 assert_(b_epoch <= e_epoch, false, "Invalid date range");
             }
 
