@@ -1,0 +1,9 @@
+[submodule "http-stream-cli/thirdparty/spdlog"]
+	path = http-stream-cli/thirdparty/spdlog
+	url = git@github.com:gabime/spdlog.git
+[submodule "http-stream-cli/thirdparty/nlohmann-json"]
+	path = http-stream-cli/thirdparty/nlohmann-json
+	url = git@github.com:nlohmann/json.git
+[submodule "http-stream-cli/thirdparty/date"]
+	path = http-stream-cli/thirdparty/date
+	url = git@github.com:HowardHinnant/date.git
