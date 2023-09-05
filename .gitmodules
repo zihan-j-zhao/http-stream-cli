@@ -7,3 +7,6 @@
 [submodule "http-stream-cli/thirdparty/date"]
 	path = http-stream-cli/thirdparty/date
 	url = git@github.com:HowardHinnant/date.git
+[submodule "http-stream-cli/thirdparty/OpenXLSX"]
+	path = http-stream-cli/thirdparty/OpenXLSX
+	url = git@github.com:troldal/OpenXLSX.git

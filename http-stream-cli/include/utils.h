@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 #include <date/date.h>
 
@@ -9,6 +11,32 @@ namespace httpstream
 {
     namespace utils
     {
+        template<typename _T>
+        bool present_in(const _T& target, const std::vector<_T>& pool)
+        {
+            return std::find(pool.begin(), pool.end(), target) != pool.end();
+        }
+
+        template<typename _T>
+        class Range
+        {
+        private:
+            const _T _a, _b;
+
+        public:
+            Range(_T a, _T b) : _a(a), _b(b) { }
+
+            _T Lower() const
+            {
+                return _a <= _b ? _a : _b;
+            }
+
+            _T Upper() const
+            {
+                return _a <= _b ? _b : _a;
+            }
+        };
+
         class DateUtils
         {
         public:

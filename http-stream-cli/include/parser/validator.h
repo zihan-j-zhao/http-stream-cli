@@ -68,12 +68,6 @@ namespace httpstream
             return ex_and_int(json, key, ignore) && assert_(json[key].is_number_unsigned(), ignore, "Wrong type for {} field, expected positive integer", key);
         }
 
-        template<typename _T>
-        bool present_in(const _T& target, const std::vector<_T>& pool)
-        {
-            return std::find(pool.begin(), pool.end(), target) != pool.end();
-        }
-
         bool check_source(const nlohmann::json& obj)
         {
             spdlog::debug("Validating the below json source:\n {}", obj.dump(2));
@@ -81,7 +75,7 @@ namespace httpstream
             if (!ex_and_str(obj, "type")) return false;
 
             std::string type = obj["type"].get<std::string>();
-            if (!present_in(type, SRC_TYPES))
+            if (!utils::present_in(type, SRC_TYPES))
             {
                 spdlog::error("Unsupported source type: {} (expected one of {})", type, stringify(SRC_TYPES));
                 return false;
@@ -97,7 +91,7 @@ namespace httpstream
                 if (!ex_and_str(obj, "vtype")) return false;
 
                 std::string vtype = obj["vtype"].get<std::string>();
-                if (!present_in(vtype, VAL_TYPES))
+                if (!utils::present_in(vtype, VAL_TYPES))
                 {
                     spdlog::error("Unsupported source vtype: {} (expected one of {})", vtype, stringify(VAL_TYPES));
                     return false;
@@ -142,12 +136,12 @@ namespace httpstream
                     spdlog::warn("Ignoring +source field in case of {}", type);
                 }
             }
-            else if (present_in<std::string>(type, ONE_TYPES) || present_in<std::string>(type, MUL_TYPES))
+            else if (utils::present_in<std::string>(type, ONE_TYPES) || utils::present_in<std::string>(type, MUL_TYPES))
             {
                 if (!ex_and_obj(obj, "+source")) return false;
                 if (!check_source(obj["+source"])) return false;
 
-                if (present_in<std::string>(type, ONE_TYPES))
+                if (utils::present_in<std::string>(type, ONE_TYPES))
                 {
                     if (ex_and_uint(obj, "+size", true) && obj["+size"].get<int>() != 1)
                     {
@@ -173,7 +167,7 @@ namespace httpstream
             }
 
             for (auto& el : obj.items())
-                if (!present_in<std::string>(el.key(), { "+type", "+size", "+source" })
+                if (!utils::present_in<std::string>(el.key(), { "+type", "+size", "+source" })
                     && el.value().is_object() && !check_object(el.value()))
                     return false;
             return true;
